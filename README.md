@@ -1,0 +1,48 @@
+
+Functional Requirements
+- Main Screen
+    - 4 elements
+        - App title 
+        - Name - text
+            - can be modified by user input
+        - Birthday - date
+            - can be modified via date picker
+        - Picture - graphic
+            - select from gallery or take a photo
+            - show a placeholder graphic if nothing has been chosen
+        - "Show birthday screen" button
+            - disabled while name & birthday are empty
+            - opens Birthday Screen
+- Birthday Screen
+    - backgrounds - 3 different, random on open
+    - headline - "TODAY [name] IS"
+    - Number - either month (if less than 1 year old) or year
+    - photo - placeholder graphic, able to choose pic from album or camera
+    - close button
+    - Share button
+        - will open sharesheet to share the screenshot of birthday screen
+            - minus share button, the camera icon, the close button.
+- Persistence
+    - Name, Birthday, Picture from Main screen
+        - name and birthday as nsuserdefualt
+        - picture save to file system
+- Share
+    - Create a screenshot without sharebutton, camera icon, close button
+    - use share api
+- File organization
+    - RootNavigation
+        - uses navigationStack and populates and handles navigations from main to present birthdayscreen
+    - MainScreen
+        - has viewmodel and view. viewmodel will depend on repository
+        - viewmodel has dependency (repository) injected on constructor, with repository
+        - view owns viewmodel, and has state hook
+        - main/birthday view -> repo -> local store
+    - BirthdayScreen
+        - also has viewmodel and view
+    - BirthdayRepository
+        - source of truth for data to populate the screens. 
+        - orchestrates local storage with presentation layer
+    - MediaFileLocalStore
+        - for storing baby photo
+    - MetadataLocalStore
+        - for storing metadata like name, birthday date
