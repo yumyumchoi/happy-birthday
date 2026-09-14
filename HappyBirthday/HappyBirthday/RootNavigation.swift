@@ -10,7 +10,6 @@
 import SwiftUI
 
 enum Route: Hashable {
-    case mainScreen
     case birthdayScreen
 }
 
@@ -19,7 +18,17 @@ struct RootNavigationView: View {
     
     var body: some View {
         NavigationStack(path: $path) {
-            // TBA
+            let localMetadataStore = LocalMetadataStore()
+            let repo = BirthdayRepository(localMetadataStore: localMetadataStore)
+            let mainScreenViewModel = MainScreenViewModel(repo: repo)
+            MainScreenView(viewModel: mainScreenViewModel, path: $path).navigationDestination(for: Route.self) { route in
+                switch route {
+                case .birthdayScreen:
+                    let birthdayScreenViewModel = BirthdayScreenViewModel(repo: repo)
+                    BirthdayScreenView(viewModel: birthdayScreenViewModel)
+                }
+           
+            }
         }
     }
 }

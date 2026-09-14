@@ -11,7 +11,25 @@ import SwiftUI
 @MainActor
 @Observable
 class MainScreenViewModel {
-    private let repo: BirthdayRepository
+    private var repo: DataRepository
+    
+    public var name: String? {
+        get { return repo.name }
+        set { repo.name = newValue }
+    }
+    
+    public var hasBirthday: Bool {
+        get { return birthday != nil }
+    }
+    
+    public var birthday: Date?  {
+        get { return repo.birthday }
+        set { repo.birthday = newValue }
+    }
+    
+    public var photoImageURL: URL?  {
+        get { return repo.photoImageURL }
+    }
     
     init(repo: BirthdayRepository) {
         self.repo = repo
