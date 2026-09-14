@@ -29,6 +29,9 @@ Functional Requirements
 - Share
     - Create a screenshot without sharebutton, camera icon, close button
     - use share api
+- Baby picture pick
+    - Intermediary view for users to choose from camera or photo album
+        - Present a modal with title: "Choose an Image Source" and 2 options: "Camera" + "Album"
 - File organization
     - RootNavigation
         - uses navigationStack and populates and handles navigations from main to present birthdayscreen
