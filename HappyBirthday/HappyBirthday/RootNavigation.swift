@@ -14,18 +14,15 @@ enum Route: Hashable {
 }
 
 struct RootNavigationView: View {
+    @Environment(BirthdayRepository.self) private var repo
     @State private var path = NavigationPath()
     
     var body: some View {
         NavigationStack(path: $path) {
-            let localMetadataStore = LocalMetadataStore()
-            let repo = BirthdayRepository(localMetadataStore: localMetadataStore)
-            let mainScreenViewModel = MainScreenViewModel(repo: repo)
-            MainScreenView(viewModel: mainScreenViewModel, path: $path).navigationDestination(for: Route.self) { route in
+            MainScreenView(viewModel: MainScreenViewModel(repo: repo), path: $path).navigationDestination(for: Route.self) { route in
                 switch route {
                 case .birthdayScreen:
-                    let birthdayScreenViewModel = BirthdayScreenViewModel(repo: repo)
-                    BirthdayScreenView(viewModel: birthdayScreenViewModel)
+                    BirthdayScreenView(viewModel: BirthdayScreenViewModel(repo: repo))
                 }
            
             }
