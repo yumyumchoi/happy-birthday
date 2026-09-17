@@ -23,27 +23,24 @@ private let birthdayColorGroups: [BirthdayColorGroup] = [
 struct BirthdayScreenView: View {
     private let repo: DataRepository
     @State private var colorIndex = Int.random(in: 0..<birthdayColorGroups.count)   // randomized on open
-    private let age: (value: Int, unit: String)
-    private var bgAssets = ["BG_fox","BG_pelican","BG_elephant"]
+    @State private var bgAsset = ["BG_elephant", "BG_fox", "BG_pelican"].randomElement() ?? ""
 
     init(repo: DataRepository) {
         self.repo = repo
-        // temp for preview
-        age = (value: 2,"MONTHS OLD" )
     }
 
     private var colors: BirthdayColorGroup { birthdayColorGroups[colorIndex] }
 
     // Age -> (number to show, unit label)
-    private func calculateAgeDisplayValue(_ birthday: Date?) -> (value: Int, unit: String) {
+    private var age: (value: Int, unit: String) {
         guard let birthday = repo.birthday else { return (0, "MONTHS OLD") }
         let comps = Calendar.current.dateComponents([.year, .month], from: birthday, to: Date())
         let years = comps.year ?? 0
         let months = comps.month ?? 0
         if years >= 1 {
-            return (years, years == 1 ? "YEAR OLD" : "YEARS OLD!")
+            return (years, years == 1 ? "YEAR OLD!" : "YEARS OLD!")
         } else {
-            return (months, months == 1 ? "MONTH OLD" : "MONTHS OLD!")
+            return (months, months == 1 ? "MONTH OLD!" : "MONTHS OLD!")
         }
     }
 
@@ -51,88 +48,107 @@ struct BirthdayScreenView: View {
         GeometryReader { geo in
             // circle diameter = 60% width, but at least 50pt inset each side
             let photoDiameter = min(geo.size.width * 0.6, geo.size.width - 100)
-            
+
             ZStack {
-                Image(bgAssets[colorIndex])
+                colors.background.ignoresSafeArea()
+
+                content(pd: photoDiameter, showCircle: true)
+
+                Image(bgAsset)
                     .resizable()
                     .scaledToFill()
                     .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    Spacer(minLength: 20)                                   // flexible top margin
-                    
-                    // "TODAY [name] IS" with share icon at far left
-                    HStack(alignment: .top) {
-                        Image("nav_back_icon")
-                        Text("TODAY \((repo.name ?? "David").uppercased()) IS")
-                            .font(.system(size: 33))
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                            .frame(width: photoDiameter)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(width: photoDiameter)
-                    
-                    Spacer().frame(height: 13)
-                    
-                    // swirl — number — swirl(flipped), row width = photo width
-                    HStack(spacing: 0) {
-                        Image("swirls_left")
-                        Spacer().frame(width: 22)
-                        Image("num_\(age.value)")
-                        Spacer().frame(width: 22)
-                        Image("swirls_left").scaleEffect(x: -1, y: 1)
-                    }
-                    .frame(width: photoDiameter)
-                    
-                    Spacer().frame(height: 14)
-                    
-                    Text(age.unit)
-                        .font(.system(size: 33))
-                    
-                    Spacer(minLength: 20)
-                    
-                    // Photo circle group
-                    ZStack {
-                        Circle().fill(colors.circleBackground)
-                        Circle().stroke(colors.circleStroke, lineWidth: 6)
-                        if let url = repo.photoImageURL,
-                           let uiImage = UIImage(contentsOfFile: url.path) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: photoDiameter, height: photoDiameter)
-                                .clipShape(Circle())
-                        } else {
-                            Image("baby_photo_placeholder_symbol")
-                        }
-                    }
-                    .frame(width: photoDiameter, height: photoDiameter)
-                    
-                    Spacer().frame(height: 15)
-                    Image("nanit_logo")
-                    
-                    Spacer().frame(height: 53)
-                    
-                    Button {
-                        // share action
-                    } label: {
-                        HStack {
-                            Text("Share the news")
-                            Image("share_icon")
-                        }
-                        .padding()
-                    }
-                    .background(Color(hex: "EF7B7B"))
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
-                    
-                    Spacer().frame(height: 53)
-                }
-                .frame(maxWidth: .infinity)
+
+                content(pd: photoDiameter, showCircle: false)
             }
-            .background(colors.background.ignoresSafeArea())
         }
+    }
+    
+    @ViewBuilder
+    private func content(pd: CGFloat, showCircle: Bool) -> some View {
+        VStack(spacing: 0) {
+            // Back icon — navigation back button is more idiomatic and we get for free, so disabling the custom backbutton, but commented so can be resurrected
+//            HStack {
+//                Image("nav_back_icon")
+//                Spacer()
+//            }
+//            .padding(.leading, 20)
+//            .opacity(showCircle ? 0 : 1)
+
+            // "TODAY [name] IS" — text block sized to photo width, centered
+            Text("TODAY \((repo.name ?? "David").uppercased()) IS")
+                .font(.system(size: 33))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .frame(width: pd)
+                .opacity(showCircle ? 0 : 1)
+
+            Spacer().frame(height: 13)
+
+            // swirl — number — swirl(flipped), row width = photo width
+            HStack(spacing: 0) {
+                Image("swirls_left")
+                Spacer().frame(width: 22)
+                Image("num_\(age.value)")
+                Spacer().frame(width: 22)
+                Image("swirls_left").scaleEffect(x: -1, y: 1)
+            }
+            .frame(width: pd)
+            .opacity(showCircle ? 0 : 1)
+
+            Spacer().frame(height: 14)
+
+            Text(age.unit)
+                .font(.system(size: 33))
+                .opacity(showCircle ? 0 : 1)
+
+            Spacer(minLength: 20)
+
+            // Circle slot — ALWAYS reserves pd×pd; drawn only in the back layer,
+            // an invisible (but space-holding) gap in the front layer.
+            ZStack {
+                Circle().fill(colors.circleBackground)
+                Circle().stroke(colors.circleStroke, lineWidth: 6)
+                if let url = repo.photoImageURL,
+                   let uiImage = UIImage(contentsOfFile: url.path) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: pd, height: pd)
+                        .clipShape(Circle())
+                } else {
+                    Image("baby_photo_placeholder_symbol")
+                    .renderingMode(.template)
+                    .foregroundStyle(colors.circleStroke)
+                }
+            }
+            .frame(width: pd, height: pd)
+            .opacity(showCircle ? 1 : 0)
+
+            Spacer(minLength: 20)
+
+            Image("nanit_logo")
+                .opacity(showCircle ? 0 : 1)
+
+            Spacer().frame(height: 53)
+
+            Button {
+                // share action
+            } label: {
+                HStack {
+                    Text("Share the news")
+                    Image("share_icon")
+                }
+                .padding()
+            }
+            .background(Color(hex: "EF7B7B"))
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .opacity(showCircle ? 0 : 1)
+
+            Spacer().frame(height: 53)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
