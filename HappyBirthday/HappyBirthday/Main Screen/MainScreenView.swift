@@ -25,12 +25,15 @@ struct MainScreenView: View {
     var body: some View {
         // vertical stack of 3 content elements + 1 app title
         VStack {
-            // TODO :: swap out with final UI treatment. For now placeholder graphics
+            
+            // Name picker
             TextField("Enter Name", text: $draftName)
                 .multilineTextAlignment(.center)
                 .onSubmit {
                     viewModel.name = draftName
                 }
+            
+            // Birthday picker
             if shouldShowBirthdayPicker{
                 DatePicker("Birthday",
                            selection: Binding(
@@ -43,6 +46,18 @@ struct MainScreenView: View {
                 }
             }
            
+            // Photo picker
+            PhotoPickerView(originView: { Text("Add Photo")}) { image in
+                
+            }
+            
+            // Birthday screen link
         }
     }
+}
+
+#Preview {
+    @Previewable @State var path = NavigationPath()
+    let vm = MainScreenViewModel(repo: BirthdayRepository(localMetadataStore: LocalMetadataStore()))
+    MainScreenView(viewModel: vm, path:$path)
 }
