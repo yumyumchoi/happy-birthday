@@ -24,6 +24,10 @@ struct BirthdayScreenView: View {
     private let repo: DataRepository
     @State private var colorIndex = Int.random(in: 0..<birthdayColorGroups.count)   // randomized on open
     @State private var bgAsset = ["BG_elephant", "BG_fox", "BG_pelican"].randomElement() ?? ""
+    @State private var screenSize: CGSize = .zero
+    @State private var shareImage: UIImage?
+    @State private var isShowingShareSheet = false
+    @Environment(\.displayScale) private var displayScale
 
     init(repo: DataRepository) {
         self.repo = repo
@@ -52,20 +56,27 @@ struct BirthdayScreenView: View {
             ZStack {
                 colors.background.ignoresSafeArea()
 
-                content(pd: photoDiameter, showCircle: true)
+                content(pd: photoDiameter, showCircle: true, forSharing: false)
 
                 Image(bgAsset)
                     .resizable()
                     .scaledToFill()
                     .ignoresSafeArea()
 
-                content(pd: photoDiameter, showCircle: false)
+                content(pd: photoDiameter, showCircle: false, forSharing: false)
+            }
+            .onAppear { screenSize = geo.size }
+            .onChange(of: geo.size) { _, newSize in screenSize = newSize }
+        }
+        .sheet(isPresented: $isShowingShareSheet) {
+            if let shareImage {
+                ActivityView(items: [shareImage])
             }
         }
     }
     
     @ViewBuilder
-    private func content(pd: CGFloat, showCircle: Bool) -> some View {
+    private func content(pd: CGFloat, showCircle: Bool, forSharing: Bool) -> some View {
         VStack(spacing: 0) {
             // Back icon — navigation back button is more idiomatic and we get for free, so disabling the custom backbutton, but commented so can be resurrected
 //            HStack {
@@ -127,7 +138,8 @@ struct BirthdayScreenView: View {
             .overlay(alignment: .center) {
                 // Camera badge sits on the stroke at 45° clockwise from the top.
                 // Front layer only (visible + tappable, on top of the decorative bg).
-                if !showCircle {
+                // Excluded from the shared image (forSharing).
+                if !showCircle && !forSharing {
                     PhotoPickerView(originView: { cameraButton(size: 48) }) { image in
                         repo.savePhotoImage(image)
                     }
@@ -143,7 +155,7 @@ struct BirthdayScreenView: View {
             Spacer().frame(height: 53)
 
             Button {
-                // share action
+                shareTapped()
             } label: {
                 HStack {
                     Text("Share the news")
@@ -154,7 +166,7 @@ struct BirthdayScreenView: View {
             .background(Color(hex: "EF7B7B"))
             .foregroundStyle(.white)
             .clipShape(Capsule())
-            .opacity(showCircle ? 0 : 1)
+            .opacity((showCircle || forSharing) ? 0 : 1)
 
             Spacer().frame(height: 53)
         }
@@ -171,6 +183,28 @@ struct BirthdayScreenView: View {
         }
         .frame(width: size, height: size)
     }
+
+    // Render the whole birthday screen — minus the share button and camera badge
+    @MainActor
+    private func shareTapped() {
+        let pd = min(screenSize.width * 0.6, screenSize.width - 100)
+        let shareView = ZStack {
+            colors.background
+            content(pd: pd, showCircle: true,  forSharing: true)
+            Image(bgAsset)
+                .resizable()
+                .scaledToFill()
+            content(pd: pd, showCircle: false, forSharing: true)
+        }
+        .frame(width: screenSize.width, height: screenSize.height)
+
+        let renderer = ImageRenderer(content: shareView)
+        renderer.scale = displayScale          // crisp @2x/@3x output
+        if let image = renderer.uiImage {
+            shareImage = image
+            isShowingShareSheet = true
+        }
+    }
 }
 
 // hex color utility
@@ -184,6 +218,15 @@ extension Color {
         let b = Double(int & 0xFF) / 255
         self.init(red: r, green: g, blue: b)
     }
+}
+
+// UIActivityViewController bridge for presenting the system share sheet.
+struct ActivityView: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
 
 #Preview {
