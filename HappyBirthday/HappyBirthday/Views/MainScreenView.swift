@@ -25,6 +25,11 @@ struct MainScreenView: View {
     var body: some View {
         // vertical stack of 3 content elements + 1 app title
         VStack {
+            // app title
+            Text("Happy Birthday")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .padding(.top)
             
             // Name picker
             TextField("Enter Name", text: $draftName)
@@ -32,32 +37,56 @@ struct MainScreenView: View {
                 .onSubmit {
                     repo.name = draftName
                 }
+                .padding(20)
             
             // Birthday picker
             if shouldShowBirthdayPicker{
-                DatePicker("Birthday",
-                           selection: Binding(
-                    get: { repo.birthday ?? Date() },
-                    set: { repo.birthday = $0 }
-                ), displayedComponents: .date)
+                HStack(spacing: 20) {
+                    Spacer()
+                    Text("Birthday")
+                    DatePicker("",
+                               selection: Binding(
+                                get: { repo.birthday ?? Date() },
+                                set: { repo.birthday = $0 }
+                               ), displayedComponents: .date)
+                    .labelsHidden()
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(20)
             } else {
                 Button("Pick a Birthday") {
                     shouldShowBirthdayPicker = true
                 }
+                .padding(20)
             }
            
             // Photo picker
             PhotoPickerView(originView: { Text("Add Photo")}) { image in
                 repo.savePhotoImage(image)
             }
+            .padding(20)
+            if let url = repo.photoImageURL,
+               let uiImage = UIImage(contentsOfFile: url.path) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 80, height: 80)
+                    .clipped()
+            }
             
             // Birthday screen link
+            Button("Show birthday screen") {
+                path.append(Route.birthdayScreen)
+            }
+            .disabled(repo.name == nil || repo.birthday == nil)
+            .padding(20)
         }
     }
 }
 
 #Preview {
     @Previewable @State var path = NavigationPath()
-    let repo = BirthdayRepository(localMetadataStore: LocalMetadataStore())
+    let repo = BirthdayRepository(localMetadataStore: LocalMetadataStore(), localPhotoStore: LocalPhotoStore())
     MainScreenView(repo:repo, path:$path)
 }
