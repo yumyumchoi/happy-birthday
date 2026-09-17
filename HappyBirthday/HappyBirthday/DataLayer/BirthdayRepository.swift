@@ -37,8 +37,9 @@ class BirthdayRepository: DataRepository {
             localMetadataStore.setDate(birthday, for: MetadataStoreKey.birthday.rawValue)
         }
     }
-    var photoImageURL: URL?
-    
+    private(set) var photoImageURL: URL?
+    private var photoFileName: String?
+
     // while we can have repo actually do the job of fetching/saving metadata, extra wrapper for appstorage is added as separate data provider, for better separation of concern, and testability
     private let localMetadataStore: MetadataStore
     private let localPhotoStore: PhotoStore
@@ -48,14 +49,15 @@ class BirthdayRepository: DataRepository {
         self.localPhotoStore = localPhotoStore
         name = localMetadataStore.string(MetadataStoreKey.name.rawValue)
         birthday = localMetadataStore.date(MetadataStoreKey.birthday.rawValue)
-        let photoFileName = localMetadataStore.string(MetadataStoreKey.photoImageFileName.rawValue)
+        photoFileName = localMetadataStore.string(MetadataStoreKey.photoImageFileName.rawValue)
         photoImageURL = photoFileNameToURL(photoFileName)
     }
     
     func savePhotoImage(_ image: UIImage) {
-        guard let photoFileName = localPhotoStore.save(image) else { return }
-        localMetadataStore.setString(photoFileName, for: MetadataStoreKey.photoImageFileName.rawValue)
-        self.photoImageURL = photoFileNameToURL(photoFileName)
+        guard let newFileName = localPhotoStore.save(image, replacing: photoFileName) else { return }
+        photoFileName = newFileName
+        localMetadataStore.setString(newFileName, for: MetadataStoreKey.photoImageFileName.rawValue)
+        photoImageURL = photoFileNameToURL(newFileName)
     }
     
     private func photoFileNameToURL(_ fileName: String?) -> URL? {

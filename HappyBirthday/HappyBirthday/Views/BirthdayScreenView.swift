@@ -124,6 +124,16 @@ struct BirthdayScreenView: View {
             }
             .frame(width: pd, height: pd)
             .opacity(showCircle ? 1 : 0)
+            .overlay(alignment: .center) {
+                // Camera badge sits on the stroke at 45° clockwise from the top.
+                // Front layer only (visible + tappable, on top of the decorative bg).
+                if !showCircle {
+                    PhotoPickerView(originView: { cameraButton(size: 48) }) { image in
+                        repo.savePhotoImage(image)
+                    }
+                    .offset(x: (pd / 2) * sin(.pi / 4), y: -(pd / 2) * cos(.pi / 4))
+                }
+            }
 
             Spacer(minLength: 20)
 
@@ -149,6 +159,17 @@ struct BirthdayScreenView: View {
             Spacer().frame(height: 53)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    // Camera badge: bg circle sized to the asset, camera symbol centered on top.
+    private func cameraButton(size: CGFloat) -> some View {
+        ZStack {
+            Circle().fill(colors.circleStroke)          // bg circle, same size as the asset
+            Image("camera_icon_symbol")
+                .renderingMode(.template)
+                .foregroundStyle(.white)
+        }
+        .frame(width: size, height: size)
     }
 }
 
