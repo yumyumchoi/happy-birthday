@@ -10,16 +10,16 @@ import SwiftUI
 // Just view render of basic metadata and link to birthday screen
 @MainActor
 struct MainScreenView: View {
-    @State var viewModel: MainScreenViewModel
     @Binding var path: NavigationPath
+    private let repo: DataRepository
     @State private var draftName: String
-    @State private var shouldShowBirthdayPicker: Bool
+    @State private var shouldShowBirthdayPicker: Bool = false
     
-    init(viewModel: MainScreenViewModel, path: Binding<NavigationPath>) {
-        _viewModel = State(initialValue: viewModel)
+    init(repo: DataRepository, path: Binding<NavigationPath>) {
+        self.repo = repo
         _path = path
-        _draftName = State(initialValue: viewModel.name ?? "")
-        _shouldShowBirthdayPicker = State(initialValue: viewModel.hasBirthday)
+        _draftName = State(initialValue: repo.name ?? "")
+        _shouldShowBirthdayPicker = State(initialValue: repo.birthday != nil)
     }
     
     var body: some View {
@@ -30,15 +30,15 @@ struct MainScreenView: View {
             TextField("Enter Name", text: $draftName)
                 .multilineTextAlignment(.center)
                 .onSubmit {
-                    viewModel.name = draftName
+                    repo.name = draftName
                 }
             
             // Birthday picker
             if shouldShowBirthdayPicker{
                 DatePicker("Birthday",
                            selection: Binding(
-                    get: { viewModel.birthday ?? Date() },
-                    set: { viewModel.birthday = $0 }
+                    get: { repo.birthday ?? Date() },
+                    set: { repo.birthday = $0 }
                 ), displayedComponents: .date)
             } else {
                 Button("Pick a Birthday") {
@@ -48,7 +48,7 @@ struct MainScreenView: View {
            
             // Photo picker
             PhotoPickerView(originView: { Text("Add Photo")}) { image in
-                
+                repo.savePhotoImage(image)
             }
             
             // Birthday screen link
@@ -58,6 +58,6 @@ struct MainScreenView: View {
 
 #Preview {
     @Previewable @State var path = NavigationPath()
-    let vm = MainScreenViewModel(repo: BirthdayRepository(localMetadataStore: LocalMetadataStore()))
-    MainScreenView(viewModel: vm, path:$path)
+    let repo = BirthdayRepository(localMetadataStore: LocalMetadataStore())
+    MainScreenView(repo:repo, path:$path)
 }

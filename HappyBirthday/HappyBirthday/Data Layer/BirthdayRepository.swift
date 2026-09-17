@@ -14,7 +14,7 @@ enum MetadataStoreKey: String {
     case photoImageURL
 }
 
-protocol DataRepository {
+protocol DataRepository: AnyObject {
     var name: String? { get set }
     var birthday: Date? { get set }
     var photoImageURL: URL? { get }

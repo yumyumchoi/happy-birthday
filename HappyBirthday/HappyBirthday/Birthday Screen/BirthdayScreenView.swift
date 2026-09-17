@@ -8,10 +8,10 @@
 import SwiftUI
 
 struct BirthdayScreenView: View {
-    @State var viewModel: BirthdayScreenViewModel
+    private let repo: DataRepository
     
-    init(viewModel: BirthdayScreenViewModel) {
-        self.viewModel = viewModel
+    init(repo: DataRepository) {
+        self.repo = repo
     }
     
     var body: some View {
