@@ -9,11 +9,9 @@ import SwiftUI
 
 @main
 struct HappyBirthdayApp: App {
-    @State private var repo = BirthdayRepository(localMetadataStore: LocalMetadataStore())
-    
     var body: some Scene {
         WindowGroup {
-            RootNavigationView().environment(repo)
+            RootNavigationView()
         }
     }
 }

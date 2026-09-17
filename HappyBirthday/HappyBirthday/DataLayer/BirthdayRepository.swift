@@ -11,7 +11,7 @@ import UIKit
 enum MetadataStoreKey: String {
     case name
     case birthday
-    case photoImageURL
+    case photoImageFileName
 }
 
 protocol DataRepository: AnyObject {
@@ -37,25 +37,31 @@ class BirthdayRepository: DataRepository {
             localMetadataStore.setDate(birthday, for: MetadataStoreKey.birthday.rawValue)
         }
     }
+    var photoImageURL: URL?
     
     // while we can have repo actually do the job of fetching/saving metadata, extra wrapper for appstorage is added as separate data provider, for better separation of concern, and testability
     private let localMetadataStore: MetadataStore
+    private let localPhotoStore: PhotoStore
     
-    init(localMetadataStore: MetadataStore) {
+    init(localMetadataStore: MetadataStore, localPhotoStore:PhotoStore) {
         self.localMetadataStore = localMetadataStore
+        self.localPhotoStore = localPhotoStore
         name = localMetadataStore.string(MetadataStoreKey.name.rawValue)
         birthday = localMetadataStore.date(MetadataStoreKey.birthday.rawValue)
+        let photoFileName = localMetadataStore.string(MetadataStoreKey.photoImageFileName.rawValue)
+        photoImageURL = photoFileNameToURL(photoFileName)
     }
-    
-    // TODO :: Image retrieve from camera + album
     
     func savePhotoImage(_ image: UIImage) {
-        
+        guard let photoFileName = localPhotoStore.save(image) else { return }
+        localMetadataStore.setString(photoFileName, for: MetadataStoreKey.photoImageFileName.rawValue)
+        self.photoImageURL = photoFileNameToURL(photoFileName)
     }
     
-    var photoImageURL: URL? {
-        get {
-            return nil
-        }
+    private func photoFileNameToURL(_ fileName: String?) -> URL? {
+        guard let fileName else { return nil }
+        return FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(fileName)
     }
 }

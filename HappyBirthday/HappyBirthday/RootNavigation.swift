@@ -14,7 +14,7 @@ enum Route: Hashable {
 }
 
 struct RootNavigationView: View {
-    let repo = BirthdayRepository(localMetadataStore: LocalMetadataStore())
+    let repo = BirthdayRepository(localMetadataStore: LocalMetadataStore(), localPhotoStore: LocalPhotoStore())
     @State private var path = NavigationPath()
     
     var body: some View {
