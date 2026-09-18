@@ -25,9 +25,9 @@ struct BirthdayScreenView: View {
     @State private var colorIndex = Int.random(in: 0..<birthdayColorGroups.count)   // randomized on open
     @State private var bgAsset = ["BG_elephant", "BG_fox", "BG_pelican"].randomElement() ?? ""
     @State private var screenSize: CGSize = .zero
-    @State private var shareImage: UIImage?
-    @State private var isShowingShareSheet = false
+    @State private var sharePayload: SharePayload?
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.dismiss) private var dismiss
 
     init(repo: DataRepository) {
         self.repo = repo
@@ -61,33 +61,34 @@ struct BirthdayScreenView: View {
                 Image(bgAsset)
                     .resizable()
                     .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
                     .ignoresSafeArea()
 
                 content(pd: photoDiameter, showCircle: false, forSharing: false)
             }
             .onAppear { screenSize = geo.size }
             .onChange(of: geo.size) { _, newSize in screenSize = newSize }
-        }
-        .sheet(isPresented: $isShowingShareSheet) {
-            if let shareImage {
-                ActivityView(items: [shareImage])
+            .overlay(alignment: .topLeading) {
+                Button { dismiss() } label: {
+                    Image("nav_back_icon")
+                }
+                .padding(.leading, 20)
             }
         }
+        .sheet(item: $sharePayload) { payload in
+            ActivityView(items: [payload.image])
+        }
+        .navigationBarBackButtonHidden(true)
     }
     
     @ViewBuilder
     private func content(pd: CGFloat, showCircle: Bool, forSharing: Bool) -> some View {
         VStack(spacing: 0) {
-            // Back icon — navigation back button is more idiomatic and we get for free, so disabling the custom backbutton, but commented so can be resurrected
-//            HStack {
-//                Image("nav_back_icon")
-//                Spacer()
-//            }
-//            .padding(.leading, 20)
-//            .opacity(showCircle ? 0 : 1)
+            Spacer(minLength: 20)   // flexible top margin (spec); close button is a screen overlay now
 
             // "TODAY [name] IS" — text block sized to photo width, centered
-            Text("TODAY \((repo.name ?? "David").uppercased()) IS")
+            Text("TODAY \((repo.name ?? "").uppercased()) IS")
                 .font(.system(size: 33))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -194,6 +195,8 @@ struct BirthdayScreenView: View {
             Image(bgAsset)
                 .resizable()
                 .scaledToFill()
+                .frame(width: screenSize.width, height: screenSize.height)
+                .clipped()
             content(pd: pd, showCircle: false, forSharing: true)
         }
         .frame(width: screenSize.width, height: screenSize.height)
@@ -201,8 +204,7 @@ struct BirthdayScreenView: View {
         let renderer = ImageRenderer(content: shareView)
         renderer.scale = displayScale          // crisp @2x/@3x output
         if let image = renderer.uiImage {
-            shareImage = image
-            isShowingShareSheet = true
+            sharePayload = SharePayload(image: image)   // non-nil item → sheet presents with the image in hand
         }
     }
 }
@@ -227,6 +229,12 @@ struct ActivityView: UIViewControllerRepresentable {
         UIActivityViewController(activityItems: items, applicationActivities: nil)
     }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+// Identifiable wrapper so the share sheet presents via .sheet(item:) with the image guaranteed present.
+struct SharePayload: Identifiable {
+    let id = UUID()
+    let image: UIImage
 }
 
 #Preview {
