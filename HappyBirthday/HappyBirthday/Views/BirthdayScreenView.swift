@@ -26,6 +26,8 @@ struct BirthdayScreenView: View {
     @State private var bgAsset = ["BG_elephant", "BG_fox", "BG_pelican"].randomElement() ?? ""
     @State private var screenSize: CGSize = .zero
     @State private var sharePayload: SharePayload?
+    @State private var circleImage: UIImage?
+    @State private var preparedShareImage: UIImage?
     @Environment(\.displayScale) private var displayScale
     @Environment(\.dismiss) private var dismiss
 
@@ -69,6 +71,19 @@ struct BirthdayScreenView: View {
             }
             .onAppear { screenSize = geo.size }
             .onChange(of: geo.size) { _, newSize in screenSize = newSize }
+            // Decode + downsample the circle photo off-main; reloads only when the photo URL changes.
+            .task(id: repo.photoImageURL) {
+                if let url = repo.photoImageURL {
+                    let target = max(photoDiameter, 120) * displayScale
+                    circleImage = await ImageLoader.downsampledImage(at: url, maxPixelSize: target)
+                } else {
+                    circleImage = nil
+                }
+            }
+            // Pre-render the share image OFF the tap path so tapping Share is instant.
+            // ImageRenderer is @MainActor (can't move off-main), so we move it off the tap
+            // instead — re-rendering only when a visible input changes.
+            .task(id: shareRenderInputs) { await prepareShareImage() }
             .overlay(alignment: .topLeading) {
                 Button { dismiss() } label: {
                     Image("nav_back_icon")
@@ -121,9 +136,8 @@ struct BirthdayScreenView: View {
             ZStack {
                 Circle().fill(colors.circleBackground)
                 Circle().stroke(colors.circleStroke, lineWidth: 6)
-                if let url = repo.photoImageURL,
-                   let uiImage = UIImage(contentsOfFile: url.path) {
-                    Image(uiImage: uiImage)
+                if let circleImage {
+                    Image(uiImage: circleImage)
                         .resizable()
                         .scaledToFill()
                         .frame(width: pd, height: pd)
@@ -185,9 +199,35 @@ struct BirthdayScreenView: View {
         .frame(width: size, height: size)
     }
 
-    // Render the whole birthday screen — minus the share button and camera badge
-    @MainActor
+    // Inputs that change what the shared image looks like. When any change, the pre-render
+    // task re-runs. Keyed on the circle image's object identity so it re-renders once the
+    // downsampled photo finishes loading (nil -> loaded, or a new photo).
+    private var shareRenderInputs: String {
+        let photoToken = circleImage.map { "\(ObjectIdentifier($0).hashValue)" } ?? "none"
+        return "\(colorIndex)|\(bgAsset)|\(age.value)|\(Int(screenSize.width))|\(photoToken)"
+    }
+
+    // Tap is instant when the pre-render is ready; otherwise render on demand as a fallback.
     private func shareTapped() {
+        if let image = preparedShareImage {
+            sharePayload = SharePayload(image: image)
+        } else {
+            Task {
+                await prepareShareImage()
+                if let image = preparedShareImage {
+                    sharePayload = SharePayload(image: image)
+                }
+            }
+        }
+    }
+
+    // Render the whole birthday screen — minus share button + camera badge — to a UIImage.
+    // Runs on @MainActor (ImageRenderer requires it) but OFF the tap path, so no tap lag.
+    @MainActor
+    private func prepareShareImage() async {
+        guard screenSize != .zero else { return }
+        await Task.yield()   // let the current frame commit before the heavy render
+
         let pd = min(screenSize.width * 0.6, screenSize.width - 100)
         let shareView = ZStack {
             colors.background
@@ -203,9 +243,7 @@ struct BirthdayScreenView: View {
 
         let renderer = ImageRenderer(content: shareView)
         renderer.scale = displayScale          // crisp @2x/@3x output
-        if let image = renderer.uiImage {
-            sharePayload = SharePayload(image: image)   // non-nil item → sheet presents with the image in hand
-        }
+        preparedShareImage = renderer.uiImage
     }
 }
 

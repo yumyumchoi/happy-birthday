@@ -54,10 +54,13 @@ class BirthdayRepository: DataRepository {
     }
     
     func savePhotoImage(_ image: UIImage) {
-        guard let newFileName = localPhotoStore.save(image, replacing: photoFileName) else { return }
-        photoFileName = newFileName
-        localMetadataStore.setString(newFileName, for: MetadataStoreKey.photoImageFileName.rawValue)
-        photoImageURL = photoFileNameToURL(newFileName)
+        // Encode + write happen off-main inside the store; the Task inherits @MainActor,
+        Task {
+            guard let newFileName = await localPhotoStore.save(image, replacing: photoFileName) else { return }
+            photoFileName = newFileName
+            localMetadataStore.setString(newFileName, for: MetadataStoreKey.photoImageFileName.rawValue)
+            photoImageURL = photoFileNameToURL(newFileName)
+        }
     }
     
     private func photoFileNameToURL(_ fileName: String?) -> URL? {

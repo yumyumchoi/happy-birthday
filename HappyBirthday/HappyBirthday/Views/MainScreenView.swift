@@ -14,6 +14,8 @@ struct MainScreenView: View {
     private let repo: DataRepository
     @State private var draftName: String
     @State private var shouldShowBirthdayPicker: Bool = false
+    @State private var thumbnail: UIImage?
+    @Environment(\.displayScale) private var displayScale
     
     init(repo: DataRepository, path: Binding<NavigationPath>) {
         self.repo = repo
@@ -66,9 +68,8 @@ struct MainScreenView: View {
                 repo.savePhotoImage(image)
             }
             .padding(20)
-            if let url = repo.photoImageURL,
-               let uiImage = UIImage(contentsOfFile: url.path) {
-                Image(uiImage: uiImage)
+            if let thumbnail {
+                Image(uiImage: thumbnail)
                     .resizable()
                     .scaledToFill()
                     .frame(width: 80, height: 80)
@@ -81,6 +82,14 @@ struct MainScreenView: View {
             }
             .disabled(repo.name == nil || repo.birthday == nil)
             .padding(20)
+        }
+        // Decode + downsample off the main thread; reloads only when the photo URL changes.
+        .task(id: repo.photoImageURL) {
+            if let url = repo.photoImageURL {
+                thumbnail = await ImageLoader.downsampledImage(at: url, maxPixelSize: 80 * displayScale)
+            } else {
+                thumbnail = nil
+            }
         }
     }
 }
