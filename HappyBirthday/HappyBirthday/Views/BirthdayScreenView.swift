@@ -23,7 +23,7 @@ private let birthdayColorGroups: [BirthdayColorGroup] = [
 struct BirthdayScreenView: View {
     private let repo: DataRepository
     @State private var colorIndex = Int.random(in: 0..<birthdayColorGroups.count)   // randomized on open
-    @State private var bgAsset = ["BG_elephant", "BG_fox", "BG_pelican"].randomElement() ?? ""
+    @State private var bgAsset = ["BG_elephant", "BG_fox", "BG_pelican"]
     @State private var screenSize: CGSize = .zero
     @State private var sharePayload: SharePayload?
     @State private var circleImage: UIImage?
@@ -60,10 +60,11 @@ struct BirthdayScreenView: View {
 
                 content(pd: photoDiameter, showCircle: true, forSharing: false)
 
-                Image(bgAsset)
+                Image(bgAsset[colorIndex])
                     .resizable()
-                    .scaledToFill()
-                    .frame(width: geo.size.width, height: geo.size.height)
+                    .scaledToFit()
+                    .frame(width: geo.size.width)                     // fill width; height follows aspect
+                    .frame(maxHeight: .infinity, alignment: .bottom)  // bottom-justified; empty space at top if shorter
                     .clipped()
                     .ignoresSafeArea()
 
@@ -84,12 +85,6 @@ struct BirthdayScreenView: View {
             // ImageRenderer is @MainActor (can't move off-main), so we move it off the tap
             // instead — re-rendering only when a visible input changes.
             .task(id: shareRenderInputs) { await prepareShareImage() }
-            .overlay(alignment: .topLeading) {
-                Button { dismiss() } label: {
-                    Image("nav_back_icon")
-                }
-                .padding(.leading, 20)
-            }
         }
         .sheet(item: $sharePayload) { payload in
             ActivityView(items: [payload.image])
@@ -102,13 +97,22 @@ struct BirthdayScreenView: View {
         VStack(spacing: 0) {
             Spacer(minLength: 20)   // flexible top margin (spec); close button is a screen overlay now
 
-            // "TODAY [name] IS" — text block sized to photo width, centered
-            Text("TODAY \((repo.name ?? "").uppercased()) IS")
-                .font(.system(size: 33))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(width: pd)
-                .opacity(showCircle ? 0 : 1)
+            ZStack(alignment: .top) {
+                Text("TODAY \((repo.name ?? "").uppercased()) IS")
+                    .font(.system(size: 33))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(width: pd)
+
+                if !showCircle && !forSharing {
+                    Button { dismiss() } label: {
+                        Image("nav_back_icon")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 20)
+                }
+            }
+            .opacity(showCircle ? 0 : 1)
 
             Spacer().frame(height: 13)
 
@@ -165,6 +169,7 @@ struct BirthdayScreenView: View {
             Spacer(minLength: 20)
 
             Image("nanit_logo")
+                .scaleEffect(1.2)
                 .opacity(showCircle ? 0 : 1)
 
             Spacer().frame(height: 53)
@@ -232,10 +237,11 @@ struct BirthdayScreenView: View {
         let shareView = ZStack {
             colors.background
             content(pd: pd, showCircle: true,  forSharing: true)
-            Image(bgAsset)
+            Image(bgAsset[colorIndex])
                 .resizable()
-                .scaledToFill()
-                .frame(width: screenSize.width, height: screenSize.height)
+                .scaledToFit()
+                .frame(width: screenSize.width)
+                .frame(maxHeight: .infinity, alignment: .bottom)
                 .clipped()
             content(pd: pd, showCircle: false, forSharing: true)
         }
